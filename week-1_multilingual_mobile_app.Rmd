@@ -1,0 +1,125 @@
+---
+title: "Week 1 — Loading & Transformations (Beginner): Multilingual App Reviews 2025"
+author: "Sabina Baraili"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: readable
+---
+
+# Overview
+
+This report loads a multilingual mobile app reviews dataset and prepares a small, tidy data frame for basic analysis. Steps are kept simple and explicit: select a few columns, assign clear names, and standardize common encodings (e.g., language codes and dates).  
+Dataset source: <https://www.kaggle.com/datasets/pratyushpuri/multilingual-mobile-app-reviews-dataset-2025>
+
+For context on interpreting app‑store ratings alongside written reviews, see:  
+**Discrepancies Between Text Reviews and Numerical Ratings for Mobile Apps (2024)** — <https://pmc.ncbi.nlm.nih.gov/articles/PMC10773744/>.  
+The article examines mismatches between star ratings and the sentiment in review text across mobile marketplaces. These discrepancies suggest that relying on ratings alone can misrepresent user experience, motivating clean preprocessing before comparisons by app or category.
+
+# Setup
+
+```{r setup, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(lubridate)
+```
+
+# Load Data (GitHub Raw URL)
+
+```{r load-data, message=TRUE}
+url <- "https://raw.githubusercontent.com/savibaraili/dataset-607-week1/main/multilingual_mobile_app_reviews_2025.csv"
+reviews_raw <- readr::read_csv(url, show_col_types = FALSE)
+
+# View the column names (so selections below can be edited if needed)
+names(reviews_raw)
+```
+
+# Beginner Cleaning: Select, Rename, Transform
+
+The code below does three clear things:
+1) Select a small subset of columns and rename them (`new_name = old_name`).  
+2) Convert `rating` to numeric.  
+3) Parse the review date and expand a few common language codes for readability.
+
+```{r tidy-transform, message=FALSE, warning=FALSE}
+# 1) Select a small subset with clear names (new = old)
+reviews_clean <- reviews_raw %>%
+  dplyr::select(
+    app_name     = app_name,
+    review_text  = review_text,
+    rating       = rating,          # target
+    language     = review_language, # e.g., "en", "es"
+    review_date  = review_date,
+    app_category = app_category,
+    app_version  = app_version,
+    country      = user_country
+  )
+
+# 2) Convert rating to numeric
+reviews_clean <- reviews_clean %>%
+  mutate(
+    rating = as.numeric(rating)
+  )
+
+# 3) Parse review date (ISO 8601 format, e.g., 2024-10-09 19:26:40)
+reviews_clean <- reviews_clean %>%
+  mutate(
+    review_date = lubridate::ymd_hms(review_date, quiet = TRUE)
+  )
+
+# 4) Expand language codes (includes codes observed in this dataset preview)
+reviews_clean <- reviews_clean %>%
+  mutate(
+    language = dplyr::recode(
+      language,
+      "en" = "English",
+      "es" = "Spanish",
+      "fr" = "French",
+      "de" = "German",
+      "hi" = "Hindi",
+      "ar" = "Arabic",
+      "ru" = "Russian",
+      "zh" = "Chinese",
+      # Added based on observed values:
+      "no" = "Norwegian",
+      "vi" = "Vietnamese",
+      "tl" = "Filipino",
+      "th" = "Thai",
+      "da" = "Danish",
+      "ja" = "Japanese",
+      "ms" = "Malay",
+      .default = language
+    )
+  )
+
+# Quick peek at the cleaned data
+glimpse(reviews_clean)
+head(reviews_clean, 10)
+```
+
+# (Optional) Quick Checks
+
+```{r quick-checks, message=FALSE, warning=FALSE}
+# Basic rating summary
+if ("rating" %in% names(reviews_clean) && is.numeric(reviews_clean$rating)) {
+  summary(reviews_clean$rating)
+}
+
+# Simple histogram
+if ("rating" %in% names(reviews_clean) && is.numeric(reviews_clean$rating)) {
+  ggplot(reviews_clean, aes(x = rating)) +
+    geom_histogram(binwidth = 0.5, boundary = 0) +
+    labs(title = "Ratings Histogram", x = "Rating", y = "Count")
+}
+```
+
+# Conclusions
+
+A small, tidy data frame (`reviews_clean`) is ready for simple filtering, grouping, and plotting. Possible next steps include comparing ratings by app or category and adding basic text analysis for `review_text` (e.g., word counts or simple sentiment).
+
+# Appendix
+
+```{r session-info}
+sessionInfo()
+```
